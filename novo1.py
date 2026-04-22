@@ -2,18 +2,21 @@ import glfw
 from OpenGL.GL import *
 import numpy as np
 import sys
+import ctypes
 
-# Vertex shader source code
+# Vertex shader source code com suporte a matriz de projeção
 vertex_shader_source = """
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aColor;
 
+uniform mat4 projection;
+
 out vec3 ourColor;
 
 void main()
 {
-    gl_Position = vec4(aPos, 1.0);
+    gl_Position = projection * vec4(aPos, 1.0);
     ourColor = aColor;
 }
 """
@@ -73,11 +76,63 @@ def create_shader_program():
         glDeleteProgram(shader_program)
         return None
     
-    # Limpar shaders (já estão linkados)
+    # Limpar shaders
     glDeleteShader(vertex_shader)
     glDeleteShader(fragment_shader)
     
     return shader_program
+
+def get_projection_matrix(width, height):
+    """
+    Cria uma matriz de projeção ortográfica que mantém a proporção do triângulo
+    independentemente da proporção da janela.
+    """
+    if height == 0:
+        height = 1
+    
+    # Matriz de projeção ortográfica
+    # Define o sistema de coordenadas: x de -1 a 1, y de -1 a 1
+    # Mas ajusta baseado na proporção da tela
+    
+    aspect_ratio = width / height
+    
+    if aspect_ratio > 1:
+        # Janela mais larga que alta
+        left = -aspect_ratio
+        right = aspect_ratio
+        bottom = -1.0
+        top = 1.0
+    else:
+        # Janela mais alta que larga
+        left = -1.0
+        right = 1.0
+        bottom = -1.0 / aspect_ratio
+        top = 1.0 / aspect_ratio
+    
+    # Criar matriz de projeção ortográfica
+    projection = np.array([
+        [2.0/(right-left), 0.0, 0.0, -(right+left)/(right-left)],
+        [0.0, 2.0/(top-bottom), 0.0, -(top+bottom)/(top-bottom)],
+        [0.0, 0.0, -1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ], dtype=np.float32)
+    
+    return projection
+
+def framebuffer_size_callback(window, width, height):
+    """Callback chamado quando a janela é redimensionada"""
+    # Atualizar a viewport para a nova resolução
+    glViewport(0, 0, width, height)
+    
+    # Atualizar a matriz de projeção no shader
+    projection = get_projection_matrix(width, height)
+    
+    # Obter o shader program atual e atualizar a uniform
+    shader_program = glfw.get_window_user_pointer(window)
+    if shader_program:
+        glUseProgram(shader_program)
+        projection_loc = glGetUniformLocation(shader_program, "projection")
+        glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
 
 def main():
     # Inicializar GLFW
@@ -88,9 +143,10 @@ def main():
     glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
     glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
     glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+    glfw.window_hint(glfw.RESIZABLE, GL_TRUE)  # Permitir redimensionamento
     
     # Criar janela
-    window = glfw.create_window(800, 600, "OpenGL Moderno - UNILAB", None, None)
+    window = glfw.create_window(800, 600, "OpenGL Moderno - UNILAB (Redimensionável)", None, None)
     if not window:
         glfw.terminate()
         sys.exit("Falha ao criar janela")
@@ -103,19 +159,25 @@ def main():
         glfw.terminate()
         sys.exit("Falha ao criar shader program")
     
+    # Armazenar o shader program na janela para uso no callback
+    glfw.set_window_user_pointer(window, shader_program)
+    
+    # Configurar callback de redimensionamento
+    glfw.set_framebuffer_size_callback(window, framebuffer_size_callback)
+    
     # Definir dados do triângulo
     vertices = np.array([
         # Posições        # Cores
         -0.5, -0.5, 0.0,  1.0, 0.0, 0.0,  # Vértice 1 - Vermelho
-         0.5, -0.5, 0.0,  0.0, 1.0, 0.0,  # Vértice 2 - Verde
-         0.0,  0.5, 0.0,  0.0, 0.0, 1.0   # Vértice 3 - Azul
+         0.5, -0.5, 0.0,  1.0, 0.0, 0.0,  # Vértice 2 - Verde
+         0.0,  0.5, 0.0,  1.0, 0.0, 0.0   # Vértice 3 - Azul
     ], dtype=np.float32)
     
     # Criar Vertex Array Object (VAO)
     VAO = glGenVertexArrays(1)
     glBindVertexArray(VAO)
     
-    # Criar Vertex Buffer Object (VBO) para vértices e cores
+    # Criar Vertex Buffer Object (VBO)
     VBO = glGenBuffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, VBO)
     glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
@@ -128,21 +190,33 @@ def main():
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), ctypes.c_void_p(3 * sizeof(GLfloat)))
     glEnableVertexAttribArray(1)
     
-    # Desvincular VAO (opcional)
+    # Desvincular VAO
     glBindVertexArray(0)
+    
+    # Configurações de renderização
+    glClearColor(0.1, 0.1, 0.1, 1.0)
+    glPointSize(8.0)
+    glLineWidth(2.0)
+    
+    # Configurar projeção inicial
+    width, height = glfw.get_framebuffer_size(window)
+    projection = get_projection_matrix(width, height)
+    
+    glUseProgram(shader_program)
+    projection_loc = glGetUniformLocation(shader_program, "projection")
+    glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
     
     # Loop principal
     while not glfw.window_should_close(window):
-        # Limpar a tela (adicionar uma cor de fundo)
-        glClearColor(0.2, 0.3, 0.3, 1.0)
+        # Limpar a tela
         glClear(GL_COLOR_BUFFER_BIT)
         
-        # Usar o programa de shader
-        glUseProgram(shader_program)
-        
-        # Desenhar triângulo
+        # Desenhar as arestas
         glBindVertexArray(VAO)
-        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glDrawArrays(GL_LINE_LOOP, 0, 3)
+        
+        # Desenhar os vértices
+        glDrawArrays(GL_POINTS, 0, 3)
         
         glfw.swap_buffers(window)
         glfw.poll_events()
@@ -155,5 +229,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    
