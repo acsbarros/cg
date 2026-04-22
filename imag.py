@@ -10,17 +10,17 @@ from IPython.display import display
 img = Image.open('ss.jpg')
 largura = img.size[0]
 altura = img.size[1]
-print(largura)
-print(altura)
+#print(largura)
+#print(altura)
 
 matrix_pixeis = img.load()
 
 for i in range(largura):
     for j in range(altura):
         pixel = matrix_pixeis[i, j]
-        if i == 0 and j ==0:
-            print(type(pixel))
-            print(pixel)
+        #if i == 0 and j ==0:
+            #print(type(pixel))
+            #print(pixel)
 
         R = pixel[0]
         G = pixel[1]
