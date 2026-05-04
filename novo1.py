@@ -124,6 +124,7 @@ def framebuffer_size_callback(window, width, height):
     # Atualizar a viewport para a nova resolução
     glViewport(0, 0, width, height)
     
+    
     # Atualizar a matriz de projeção no shader
     projection = get_projection_matrix(width, height)
     
@@ -206,6 +207,9 @@ def main():
     projection_loc = glGetUniformLocation(shader_program, "projection")
     glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
     
+    shader_program_ref = shader_program
+
+
     # Loop principal
     while not glfw.window_should_close(window):
         # Limpar a tela

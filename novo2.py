@@ -138,26 +138,29 @@ def create_shader_program():
 
 def get_projection_matrix(width, height):
     """Cria uma matriz de projeção ortográfica"""
-    if height == 0:
-        height = 1
-    
+
     aspect_ratio = width / height
     
     if aspect_ratio > 1:
-        left = -aspect_ratio
-        right = aspect_ratio
-        bottom = -1.0
-        top = 1.0
+        # Janela mais larga que alta
+        xwmin = -aspect_ratio
+        xwmax = aspect_ratio
+        ywmin = -1.0
+        ywmax = 1.0
     else:
-        left = -1.0
-        right = 1.0
-        bottom = -1.0 / aspect_ratio
-        top = 1.0 / aspect_ratio
+        # Janela mais alta que larga
+        xwmin = -1.0
+        xwmax = 1.0
+        ywmin = -1.0 / aspect_ratio
+        ywmax = 1.0 / aspect_ratio
     
+    znear = 1.0
+    zfar  = -1.0
+        
     projection = np.array([
-        [2.0/(right-left), 0.0, 0.0, -(right+left)/(right-left)],
-        [0.0, 2.0/(top-bottom), 0.0, -(top+bottom)/(top-bottom)],
-        [0.0, 0.0, -1.0, 0.0],
+        [2.0/(xwmax-xwmin), 0.0, 0.0, -(xwmax+xwmin)/(xwmax-xwmin)],
+        [0.0, 2.0/(ywmax-ywmin), 0.0, -(ywmax+ywmin)/(ywmax-ywmin)],
+        [0.0, 0.0, -2/(znear-zfar), (znear+zfar)/(znear-zfar)],
         [0.0, 0.0, 0.0, 1.0]
     ], dtype=np.float32)
     
@@ -166,7 +169,15 @@ def get_projection_matrix(width, height):
 def framebuffer_size_callback(window, width, height):
     """Callback chamado quando a janela é redimensionada"""
     glViewport(0, 0, width, height)
-    
+
+    current_program = glGetIntegerv(GL_CURRENT_PROGRAM)
+    if current_program:
+        # Atualizar a matriz de projeção no shader
+        projection = get_projection_matrix(width, height)
+        
+        projection_loc = glGetUniformLocation(current_program, "projection")
+        glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
+    '''
     # Atualizar a matriz de projeção
     projection = get_projection_matrix(width, height)
     shader_program = glfw.get_window_user_pointer(window)
@@ -174,6 +185,7 @@ def framebuffer_size_callback(window, width, height):
         glUseProgram(shader_program)
         projection_loc = glGetUniformLocation(shader_program, "projection")
         glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
+    '''
 
 def key_callback(window, key, scancode, action, mods):
     """Callback para teclado - controla as transformações"""
@@ -268,7 +280,7 @@ def main():
     glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
     
     # Criar janela
-    window = glfw.create_window(800, 600, "Transformações Geométricas - UNILAB", None, None)
+    window = glfw.create_window(176, 144, "Transformações Geométricas - UNILAB", None, None)
     if not window:
         glfw.terminate()
         sys.exit("Falha ao criar janela")
