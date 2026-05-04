@@ -136,7 +136,7 @@ def create_shader_program():
     
     return shader_program
 
-def get_projection_matrix(width, height):
+def get_projection_matrix_ortogonal(width, height,znear=1.0, zfar=-1.0):
     """Cria uma matriz de projeção ortográfica"""
 
     aspect_ratio = width / height
@@ -154,9 +154,6 @@ def get_projection_matrix(width, height):
         ywmin = -1.0 / aspect_ratio
         ywmax = 1.0 / aspect_ratio
     
-    znear = 1.0
-    zfar  = -1.0
-        
     projection = np.array([
         [2.0/(xwmax-xwmin), 0.0, 0.0, -(xwmax+xwmin)/(xwmax-xwmin)],
         [0.0, 2.0/(ywmax-ywmin), 0.0, -(ywmax+ywmin)/(ywmax-ywmin)],
@@ -166,6 +163,44 @@ def get_projection_matrix(width, height):
     
     return projection
 
+
+def get_view_matrix(eye_pos=np.array([0.0, 0.0, 3.0]), target=np.array([0.0, 0.0, 0.0]), up=np.array([0.0, 1.0, 0.0])):
+    """Cria uma matriz de view"""
+    # vetor direção da câmera
+    forward = eye_pos - target_pos
+    # normalizar o vetor direção
+    forward = forward / np.linalg.norm(forward)
+    # vetor direita da câmera
+    right = np.cross(up, forward)
+    right = right / np.linalg.norm(right)
+    # vetor para cima da câmera    up = np.cross(forward, right)
+    up = np.cross(forward, right)
+    up = up / np.linalg.norm(up)  
+
+    # Matriz de rotação (muda orientação)
+    # Mapeia os eixos do mundo para os eixos da câmera
+    rotation_matrix = np.array([
+        [right[0], right[1], right[2], 0],
+        [up[0],    up[1],    up[2],    0],
+        [forward[0], forward[1], forward[2], 0],
+        [0,        0,        0,       1]
+    ], dtype=np.float32)
+
+    # Matriz de translação (move a câmera para a origem)
+    translation_matrix = np.array([
+        [1, 0, 0, -eye_pos[0]],
+        [0, 1, 0, -eye_pos[1]],
+        [0, 0, 1, -eye_pos[2]],
+        [0, 0, 0, 1]
+    ], dtype=np.float32)
+
+    # Matriz de view = Rotação * Translação
+    view_matrix = rotation_matrix @ translation_matrix
+    
+    return view_matrix
+
+
+
 def framebuffer_size_callback(window, width, height):
     """Callback chamado quando a janela é redimensionada"""
     glViewport(0, 0, width, height)
@@ -173,7 +208,7 @@ def framebuffer_size_callback(window, width, height):
     current_program = glGetIntegerv(GL_CURRENT_PROGRAM)
     if current_program:
         # Atualizar a matriz de projeção no shader
-        projection = get_projection_matrix(width, height)
+        projection = get_projection_matrix_ortogonal(width, height)
         
         projection_loc = glGetUniformLocation(current_program, "projection")
         glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
@@ -339,7 +374,7 @@ def main():
     
     # Configurar projeção inicial
     width, height = glfw.get_framebuffer_size(window)
-    projection = get_projection_matrix(width, height)
+    projection = get_projection_matrix_ortogonal(width, height)
     
     glUseProgram(shader_program)
     projection_loc = glGetUniformLocation(shader_program, "projection")
