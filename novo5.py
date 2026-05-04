@@ -202,6 +202,7 @@ def create_cube_data():
     """Cria os vértices e índices para um cubo colorido"""
     
     # Vértices do cubo (8 vértices)
+    
     vertices = np.array([
         # Posições        # Cores (RGB)
         # Frente (Z = 0.5)
@@ -240,7 +241,7 @@ def create_cube_data():
         -0.5,  0.5,  0.5,  0.0, 1.0, 1.0,  # 22 - Ciano
         -0.5, -0.5,  0.5,  0.0, 1.0, 1.0   # 23 - Ciano
     ], dtype=np.float32)
-    
+        
     # Índices para desenhar as arestas do cubo (LINE_LOOP para cada face)
     # Cada face tem 4 vértices em ordem para formar um quadrado
     indices = np.array([
@@ -257,7 +258,29 @@ def create_cube_data():
         # Face esquerda (Ciano)
         20, 21, 22, 23
     ], dtype=np.uint32)
+    '''
+    vertices = np.array([
+        -0.5, -0.5, -0.5,  1.0, 0.0, 0.0,  # 0
+         0.5, -0.5, -0.5,  0.0, 1.0, 0.0,  # 1
+         0.5,  0.5, -0.5,  0.0, 0.0, 1.0,  # 2
+        -0.5,  0.5, -0.5,  1.0, 1.0, 0.0,  # 3
+        -0.5, -0.5,  0.5,  1.0, 0.0, 1.0,  # 4
+         0.5, -0.5,  0.5,  0.0, 1.0, 1.0,  # 5
+         0.5,  0.5,  0.5,  1.0, 1.0, 1.0,  # 6
+        -0.5,  0.5,  0.5,  0.0, 0.0, 0.0   # 7
+    ], dtype=np.float32)
     
+    indices = np.array([
+        0, 1, 2, 2, 3, 0,  # Face de trás
+        4, 5, 6, 6, 7, 4,  # Face da frente
+        0, 1, 5, 5, 4, 0,  # Face de baixo
+        2, 3, 7, 7, 6, 2,  # Face de cima
+        0, 3, 7, 7, 4, 0,  # Face da esquerda
+        1, 2, 6, 6, 5, 1   # Face da direita
+    ], dtype=np.uint32)
+
+    '''
+
     return vertices, indices
 
 def framebuffer_size_callback(window, width, height):
@@ -475,6 +498,7 @@ def main():
         # Cada face tem 4 vértices, então desenhamos LINE_LOOP para cada face
         for i in range(6):  # 6 faces
             glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, ctypes.c_void_p(i * 4 * 4))  # 4 bytes por índice
+        #glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None)
         
         glfw.swap_buffers(window)
         glfw.poll_events()
