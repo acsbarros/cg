@@ -38,7 +38,7 @@ void main()
 
 class Camera:
     """Classe para gerenciar a câmera em primeira pessoa"""
-    def __init__(self, position=np.array([0.0, 0.0, 5.0]), yaw=-90.0, pitch=0.0):
+    def __init__(self, position=np.array([3.0, 3.0, 5.0]), yaw=-135.0, pitch=35.0):
         self.position = position
         self.world_up = np.array([0.0, 1.0, 0.0])
         self.yaw = yaw  # Ângulo em torno do eixo Y (em graus)
@@ -72,43 +72,23 @@ class Camera:
     def get_view_matrix(self):
         """Retorna a matriz de view (look-at) para a câmera"""
         target = self.position + self.front
-        return self.look_at(self.position, target, self.up)
-    
-    def look_at(self, eye, target, up):
-        """Cria uma matriz de view look-at"""
-        forward = eye - target
-        forward = forward / np.linalg.norm(forward)
-        
-        right = np.cross(up, forward)
-        right = right / np.linalg.norm(right)
-        
-        up_camera = np.cross(forward, right)
-        up_camera = up_camera / np.linalg.norm(up_camera)
-        
-        view_matrix = np.array([
-            [right[0], right[1], right[2], -np.dot(right, eye)],
-            [up_camera[0], up_camera[1], up_camera[2], -np.dot(up_camera, eye)],
-            [forward[0], forward[1], forward[2], -np.dot(forward, eye)],
-            [0, 0, 0, 1]
-        ], dtype=np.float32)
-        
-        return view_matrix
+        return get_view_matrix(self.position, target, self.up)
     
     def process_keyboard(self, keys, delta_time):
         """Processa entrada do teclado para movimento da câmera"""
         velocity = self.speed * delta_time
         
-        if keys.get(glfw.KEY_W, False):
+        if keys[glfw.KEY_W]:
             self.position += self.front * velocity
-        if keys.get(glfw.KEY_S, False):
+        if keys[glfw.KEY_S]:
             self.position -= self.front * velocity
-        if keys.get(glfw.KEY_A, False):
+        if keys[glfw.KEY_A]:
             self.position -= self.right * velocity
-        if keys.get(glfw.KEY_D, False):
+        if keys[glfw.KEY_D]:
             self.position += self.right * velocity
-        if keys.get(glfw.KEY_SPACE, False):
+        if keys[glfw.KEY_SPACE]:
             self.position += self.world_up * velocity
-        if keys.get(glfw.KEY_LEFT_SHIFT, False):
+        if keys[glfw.KEY_LEFT_SHIFT]:
             self.position -= self.world_up * velocity
     
     def process_mouse(self, x_offset, y_offset):
@@ -123,14 +103,86 @@ class Camera:
             self.pitch = -89.0
         
         self.update_camera_vectors()
+
+class Transformations:
+    """Classe para gerenciar as transformações do cubo"""
+    def __init__(self):
+        self.translation_x = 0.0
+        self.translation_y = 0.0
+        self.translation_z = 0.0
+        self.rotation_angle_x = 0.0  # Rotação em X
+        self.rotation_angle_y = 0.0  # Rotação em Y
+        self.rotation_angle_z = 0.0  # Rotação em Z
+        self.scale_x = 1.0
+        self.scale_y = 1.0
+        self.scale_z = 1.0
+    
+    def get_model_matrix(self):
+        """Retorna a matriz de modelo combinando translação, rotações e escala"""
+        # Matriz de translação
+        translation = np.array([
+            [1, 0, 0, self.translation_x],
+            [0, 1, 0, self.translation_y],
+            [0, 0, 1, self.translation_z],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        # Matriz de rotação em X
+        rad_x = math.radians(self.rotation_angle_x)
+        cos_x = math.cos(rad_x)
+        sin_x = math.sin(rad_x)
+        rotation_x = np.array([
+            [1, 0, 0, 0],
+            [0, cos_x, -sin_x, 0],
+            [0, sin_x, cos_x, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        # Matriz de rotação em Y
+        rad_y = math.radians(self.rotation_angle_y)
+        cos_y = math.cos(rad_y)
+        sin_y = math.sin(rad_y)
+        rotation_y = np.array([
+            [cos_y, 0, sin_y, 0],
+            [0, 1, 0, 0],
+            [-sin_y, 0, cos_y, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        # Matriz de rotação em Z
+        rad_z = math.radians(self.rotation_angle_z)
+        cos_z = math.cos(rad_z)
+        sin_z = math.sin(rad_z)
+        rotation_z = np.array([
+            [cos_z, -sin_z, 0, 0],
+            [sin_z, cos_z, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        # Matriz de escala
+        scale = np.array([
+            [self.scale_x, 0, 0, 0],
+            [0, self.scale_y, 0, 0],
+            [0, 0, self.scale_z, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+        
+        # Combinar transformações: Translação * RotaçãoZ * RotaçãoY * RotaçãoX * Escala
+        model = translation @ rotation_z @ rotation_y @ rotation_x @ scale
+        return model
     
     def reset(self):
-        """Reseta a posição da câmera"""
-        self.position = np.array([0.0, 0.0, 5.0])
-        self.yaw = -90.0
-        self.pitch = 0.0
-        self.update_camera_vectors()
-        print("\n--- POSIÇÃO DA CÂMERA RESETADA ---")
+        """Reseta todas as transformações"""
+        self.translation_x = 0.0
+        self.translation_y = 0.0
+        self.translation_z = 0.0
+        self.rotation_angle_x = 0.0
+        self.rotation_angle_y = 0.0
+        self.rotation_angle_z = 0.0
+        self.scale_x = 1.0
+        self.scale_y = 1.0
+        self.scale_z = 1.0
 
 def compile_shader(source, shader_type):
     """Compila um shader e retorna seu ID"""
@@ -191,6 +243,26 @@ def get_projection_matrix_perspective(fov=45.0, aspect_ratio=1.0, near=0.1, far=
     ], dtype=np.float32)
     
     return projection
+
+def get_view_matrix(eye_pos, target_pos, up):
+    """Cria uma matriz de view (look-at)"""
+    forward = eye_pos - target_pos
+    forward = forward / np.linalg.norm(forward)
+    
+    right = np.cross(up, forward)
+    right = right / np.linalg.norm(right)
+    
+    up_camera = np.cross(forward, right)
+    up_camera = up_camera / np.linalg.norm(up_camera)
+    
+    view_matrix = np.array([
+        [right[0], right[1], right[2], -np.dot(right, eye_pos)],
+        [up_camera[0], up_camera[1], up_camera[2], -np.dot(up_camera, eye_pos)],
+        [forward[0], forward[1], forward[2], -np.dot(forward, eye_pos)],
+        [0, 0, 0, 1]
+    ], dtype=np.float32)
+    
+    return view_matrix
 
 def create_cube_data():
     """Cria os vértices e índices para um cubo colorido"""
@@ -264,15 +336,17 @@ def framebuffer_size_callback(window, width, height):
         glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
 
 def key_callback(window, key, scancode, action, mods):
-    """Callback para teclado"""
+    """Callback para teclado - controla as transformações do cubo e modos da câmera"""
     if action == glfw.PRESS:
-        camera = glfw.get_window_user_pointer(window)
-        if camera is None:
+        transforms = glfw.get_window_user_pointer(window)
+        if transforms is None:
             return
         
-        # Reset da câmera
+        # Reset das transformações do cubo
         if key == glfw.KEY_R:
-            camera.reset()
+            transforms.reset()
+            print("\n--- TRANSFORMAÇÕES DO CUBO RESETADAS ---")
+            print("----------------------------------------\n")
         
         # Sair
         elif key == glfw.KEY_ESCAPE:
@@ -280,6 +354,10 @@ def key_callback(window, key, scancode, action, mods):
 
 def mouse_callback(window, xpos, ypos):
     """Callback para movimento do mouse"""
+    if not glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT):
+        return
+    
+    # Obter estado do mouse
     global first_mouse, last_x, last_y
     
     if first_mouse:
@@ -294,24 +372,94 @@ def mouse_callback(window, xpos, ypos):
     last_y = ypos
     
     camera = glfw.get_window_user_pointer(window)
-    if camera:
+    if isinstance(camera, Camera):
         camera.process_mouse(x_offset, y_offset)
 
 def print_controls():
     """Imprime os controles no console"""
     print("\n" + "="*60)
-    print("CÂMERA EM PRIMEIRA PESSOA - EXPLORE O CUBO 3D")
+    print("CUBO 3D - CONTROLES DE CÂMERA E TRANSFORMAÇÕES")
     print("="*60)
-    print("\nMOVIMENTAÇÃO DA CÂMERA:")
-    print("  Mouse + botão esquerdo - Olhar ao redor")
+    print("\nCÂMERA EM PRIMEIRA PESSOA:")
+    print("  Mouse esquerdo + mover mouse - Olhar ao redor")
     print("  W/A/S/D - Movimentar no plano XZ")
     print("  ESPAÇO   - Subir")
     print("  SHIFT    - Descer")
-    print("  R        - Resetar posição da câmera")
-    print("  ESC      - Sair")
-    print("\nOBJETIVO:")
-    print("  Explore o cubo colorido de todos os ângulos!")
+    print("\nTRANSFORMAÇÕES DO CUBO:")
+    print("  ← →   - Mover cubo esquerda/direita (X)")
+    print("  ↑ ↓   - Mover cubo cima/baixo (Y)")
+    print("  I/K   - Mover cubo frente/trás (Z)")
+    print("  X/Y/Z - Rotacionar cubo nos eixos X, Y, Z")
+    print("  W/S   - Escala do cubo em X")
+    print("  A/D   - Escala do cubo em Y")
+    print("  E/Q   - Escala do cubo em Z")
+    print("\nOUTROS:")
+    print("  R     - Resetar transformações do cubo")
+    print("  ESC   - Sair")
+    print("\nDica: A câmera inicia atrás do cubo. Use WASD para se mover ao redor!")
     print("="*60 + "\n")
+
+def process_cube_transformations(window, transforms, key, action):
+    """Processa transformações específicas do cubo"""
+    if action != glfw.PRESS and action != glfw.REPEAT:
+        return
+    
+    # Translação do cubo
+    if key == glfw.KEY_RIGHT:
+        transforms.translation_x += 0.1
+        print(f"Cubo - Translação X: {transforms.translation_x:.2f}")
+    elif key == glfw.KEY_LEFT:
+        transforms.translation_x -= 0.1
+        print(f"Cubo - Translação X: {transforms.translation_x:.2f}")
+    elif key == glfw.KEY_UP:
+        transforms.translation_y += 0.1
+        print(f"Cubo - Translação Y: {transforms.translation_y:.2f}")
+    elif key == glfw.KEY_DOWN:
+        transforms.translation_y -= 0.1
+        print(f"Cubo - Translação Y: {transforms.translation_y:.2f}")
+    elif key == glfw.KEY_I:
+        transforms.translation_z -= 0.1
+        print(f"Cubo - Translação Z: {transforms.translation_z:.2f}")
+    elif key == glfw.KEY_K:
+        transforms.translation_z += 0.1
+        print(f"Cubo - Translação Z: {transforms.translation_z:.2f}")
+    
+    # Rotação do cubo
+    elif key == glfw.KEY_X:
+        transforms.rotation_angle_x += 15.0
+        print(f"Cubo - Rotação X: {transforms.rotation_angle_x:.1f}°")
+    elif key == glfw.KEY_Y:
+        transforms.rotation_angle_y += 15.0
+        print(f"Cubo - Rotação Y: {transforms.rotation_angle_y:.1f}°")
+    elif key == glfw.KEY_Z:
+        transforms.rotation_angle_z += 15.0
+        print(f"Cubo - Rotação Z: {transforms.rotation_angle_z:.1f}°")
+    
+    # Escala do cubo
+    elif key == glfw.KEY_W:
+        transforms.scale_x += 0.1
+        print(f"Cubo - Escala X: {transforms.scale_x:.2f}")
+    elif key == glfw.KEY_S:
+        transforms.scale_x -= 0.1
+        if transforms.scale_x < 0.1:
+            transforms.scale_x = 0.1
+        print(f"Cubo - Escala X: {transforms.scale_x:.2f}")
+    elif key == glfw.KEY_A:
+        transforms.scale_y += 0.1
+        print(f"Cubo - Escala Y: {transforms.scale_y:.2f}")
+    elif key == glfw.KEY_D:
+        transforms.scale_y -= 0.1
+        if transforms.scale_y < 0.1:
+            transforms.scale_y = 0.1
+        print(f"Cubo - Escala Y: {transforms.scale_y:.2f}")
+    elif key == glfw.KEY_E:
+        transforms.scale_z += 0.1
+        print(f"Cubo - Escala Z: {transforms.scale_z:.2f}")
+    elif key == glfw.KEY_Q:
+        transforms.scale_z -= 0.1
+        if transforms.scale_z < 0.1:
+            transforms.scale_z = 0.1
+        print(f"Cubo - Escala Z: {transforms.scale_z:.2f}")
 
 def main():
     # Inicializar GLFW
@@ -325,7 +473,7 @@ def main():
     glfw.window_hint(glfw.DEPTH_BITS, 24)
     
     # Criar janela
-    window = glfw.create_window(800, 600, "Câmera em Primeira Pessoa - Cubo 3D", None, None)
+    window = glfw.create_window(800, 600, "Cubo 3D - UNILAB (Câmera em Primeira Pessoa)", None, None)
     if not window:
         glfw.terminate()
         sys.exit("Falha ao criar janela")
@@ -335,8 +483,11 @@ def main():
     # Desabilitar cursor para melhor experiência em primeira pessoa
     glfw.set_input_mode(window, glfw.CURSOR, glfw.CURSOR_DISABLED)
     
-    # Criar câmera
-    camera = Camera(position=np.array([0.0, 0.0, 5.0]), yaw=-90.0, pitch=0.0)
+    # Criar objeto de transformações do cubo
+    transforms = Transformations()
+    
+    # Criar câmera em primeira pessoa (posicionada atrás do cubo)
+    camera = Camera(position=np.array([3.0, 3.0, 5.0]), yaw=-135.0, pitch=35.0)
     
     # Criar e compilar shaders
     shader_program = create_shader_program()
@@ -400,12 +551,10 @@ def main():
     projection_loc = glGetUniformLocation(shader_program, "projection")
     glUniformMatrix4fv(projection_loc, 1, GL_TRUE, projection)
     
-    # Matriz identidade para o modelo (cubo fixo na origem)
-    model_matrix = np.eye(4, dtype=np.float32)
+    # Obter localização da matriz model
     model_loc = glGetUniformLocation(shader_program, "model")
-    glUniformMatrix4fv(model_loc, 1, GL_TRUE, model_matrix)
     
-    # Obter localização da matriz view
+    # Configurar view matrix inicial
     view_loc = glGetUniformLocation(shader_program, "view")
     
     # Imprimir controles
@@ -427,6 +576,21 @@ def main():
         # Processar eventos
         glfw.poll_events()
         
+        # Verificar teclas para transformações do cubo
+        for key in [glfw.KEY_RIGHT, glfw.KEY_LEFT, glfw.KEY_UP, glfw.KEY_DOWN,
+                    glfw.KEY_I, glfw.KEY_K, glfw.KEY_X, glfw.KEY_Y, glfw.KEY_Z,
+                    glfw.KEY_W, glfw.KEY_S, glfw.KEY_A, glfw.KEY_D, glfw.KEY_E, glfw.KEY_Q,
+                    glfw.KEY_R, glfw.KEY_ESCAPE]:
+            if glfw.get_key(window, key) == glfw.PRESS:
+                if key == glfw.KEY_ESCAPE:
+                    glfw.set_window_should_close(window, True)
+                elif key == glfw.KEY_R:
+                    transforms.reset()
+                    print("\n--- TRANSFORMAÇÕES DO CUBO RESETADAS ---")
+                    print("----------------------------------------\n")
+                else:
+                    process_cube_transformations(window, transforms, key, glfw.PRESS)
+        
         # Movimento da câmera baseado em teclas pressionadas
         for key in [glfw.KEY_W, glfw.KEY_S, glfw.KEY_A, glfw.KEY_D, glfw.KEY_SPACE, glfw.KEY_LEFT_SHIFT]:
             keys_pressed[key] = glfw.get_key(window, key) == glfw.PRESS
@@ -439,6 +603,10 @@ def main():
         # Atualizar matriz de view da câmera
         view_matrix = camera.get_view_matrix()
         glUniformMatrix4fv(view_loc, 1, GL_TRUE, view_matrix)
+        
+        # Aplicar matriz de modelo do cubo
+        model_matrix = transforms.get_model_matrix()
+        glUniformMatrix4fv(model_loc, 1, GL_TRUE, model_matrix)
         
         # Desenhar o cubo
         glBindVertexArray(VAO)
