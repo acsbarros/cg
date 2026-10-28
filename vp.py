@@ -2,10 +2,9 @@ import math
 import sys
 import glfw
 from OpenGL.GL import *
-from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
-# Variáveis globais de estado (cores e transformações)
+# Variáveis globais de estado
 r1, g1, b1 = 1.0, 1.0, 1.0
 r2, g2, b2 = 1.0, 1.0, 1.0
 r3, g3, b3 = 1.0, 1.0, 1.0
@@ -23,15 +22,13 @@ activeV = 0
 eixoX = 0
 eixoY = 0
 
-FONTE = GLUT_BITMAP_9_BY_15
-
 def error_callback(error, description):
     sys.stderr.write(f"Erro GLFW: {description.decode('utf-8')}\n")
 
 def mouse_button_callback(window, button, action, mods):
     global r1, g1, b1, r2, g2, b2, r3, g3, b3, r4, g4, b4, activeV
     
-    if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_PRESS:
+    if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
         xpos, ypos = glfw.get_cursor_pos(window)
         
         if activeV == 1:
@@ -57,7 +54,7 @@ def mouse_button_callback(window, button, action, mods):
                 r3, g3, b3 = 0.0, 0.0, 0.0
                 activeV = 3
 
-        # Quadrante Inferior Direito (Texto)
+        # Quadrante Inferior Direito
         if 500 / 2.0 < xpos < 500:
             if 500 / 2.0 < ypos < 500:
                 r4, g4, b4 = 0.0, 0.0, 0.0
@@ -66,7 +63,7 @@ def mouse_button_callback(window, button, action, mods):
 def key_callback(window, key, scancode, action, mods):
     global rx1, rx3, sx1, sy1, sz1, sx3, sy3, sz3, ty1, ty3, tx1, tx3, eixoX
     
-    if action == GLFW_PRESS and key == GLFW_KEY_RIGHT:
+    if action == glfw.PRESS and key == glfw.KEY_RIGHT:
         if activeV == 1:
             rx1 += 10
             eixoX = 1
@@ -74,7 +71,7 @@ def key_callback(window, key, scancode, action, mods):
             rx3 += 10
             eixoX = 1
             
-    if action == GLFW_PRESS and key == GLFW_KEY_LEFT:
+    if action == glfw.PRESS and key == glfw.KEY_LEFT:
         if activeV == 1:
             rx1 -= 10
             eixoX = 1
@@ -82,53 +79,36 @@ def key_callback(window, key, scancode, action, mods):
             rx3 -= 10
             eixoX = 1
             
-    if action == GLFW_PRESS and key == GLFW_KEY_UP:
+    if action == glfw.PRESS and key == glfw.KEY_UP:
         if activeV == 1:
-            sx1 += 0.1
-            sy1 += 0.1
-            sz1 += 0.1
+            sx1 += 0.1; sy1 += 0.1; sz1 += 0.1
         elif activeV == 3:
-            sx3 += 0.1
-            sy3 += 0.1
-            sz3 += 0.1
+            sx3 += 0.1; sy3 += 0.1; sz3 += 0.1
             
-    if action == GLFW_PRESS and key == GLFW_KEY_DOWN:
+    if action == glfw.PRESS and key == glfw.KEY_DOWN:
         if activeV == 1:
-            sx1 -= 0.1
-            sy1 -= 0.1
-            sz1 -= 0.1
+            sx1 -= 0.1; sy1 -= 0.1; sz1 -= 0.1
         elif activeV == 3:
-            sx3 -= 0.1
-            sy3 -= 0.1
-            sz3 -= 0.1
+            sx3 -= 0.1; sy3 -= 0.1; sz3 -= 0.1
             
-    if action == GLFW_PRESS and key == GLFW_KEY_W:
-        if activeV == 1:
-            ty1 += 0.1
-        elif activeV == 3:
-            ty3 += 0.1
-            
-    if action == GLFW_PRESS and key == GLFW_KEY_S:
-        if activeV == 1:
-            ty1 -= 0.1
-        elif activeV == 3:
-            ty3 -= 0.1
-            
-    if action == GLFW_PRESS and key == GLFW_KEY_A:
-        if activeV == 1:
-            tx1 -= 0.1
-        elif activeV == 3:
-            tx3 -= 0.1
-            
-    if action == GLFW_PRESS and key == GLFW_KEY_D:
-        if activeV == 1:
-            tx1 += 0.1
-        elif activeV == 3:
-            tx3 += 0.1
+    if action == glfw.PRESS:
+        if key == glfw.KEY_W:
+            if activeV == 1: ty1 += 0.1
+            elif activeV == 3: ty3 += 0.1
+        elif key == glfw.KEY_S:
+            if activeV == 1: ty1 -= 0.1
+            elif activeV == 3: ty3 -= 0.1
+        elif key == glfw.KEY_A:
+            if activeV == 1: tx1 -= 0.1
+            elif activeV == 3: tx3 -= 0.1
+        elif key == glfw.KEY_D:
+            if activeV == 1: tx1 += 0.1
+            elif activeV == 3: tx3 += 0.1
 
 def main():
+    glfw.set_error_callback(error_callback)
     if not glfw.init():
-        sys.exit(EXIT_FAILURE if 'EXIT_FAILURE' in globals() else 1)
+        sys.exit(1)
         
     window = glfw.create_window(500, 500, "Trabalho 01", None, None)
     if not window:
@@ -138,10 +118,8 @@ def main():
     glfw.make_context_current(window)
     glfw.swap_interval(1)
     glfw.set_key_callback(window, key_callback)
-    glfw.set_input_mode(window, GLFW_STICKY_KEYS, 1)
+    glfw.set_input_mode(window, glfw.STICKY_KEYS, glfw.TRUE)
     glfw.set_mouse_button_callback(window, mouse_button_callback)
-    
-    glutInit(sys.argv)
     
     while not glfw.window_should_close(window):
         width, height = glfw.get_framebuffer_size(window)
@@ -179,8 +157,6 @@ def main():
         glLoadIdentity()
         
         glPushMatrix()
-        if activeV == 2:
-            pass
         glBegin(GL_LINE_LOOP)
         glColor3f(0.0, 1.0, 0.0)
         for ii in range(100):
@@ -213,27 +189,13 @@ def main():
         glEnd()
         glPopMatrix()
 
-        # --- Viewport 4 (Inferior Direito) - Textos ---
+        # --- Viewport 4 (Inferior Direito) ---
         glViewport(width // 2, 0, width // 2, height // 2)
         glScissor(width // 2, 0, width // 2, height // 2)
         glEnable(GL_SCISSOR_TEST)
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT)
         glLoadIdentity()
-        glColor3f(1.0, 0.0, 0.0)
-        
-        # Renderização de texto
-        glRasterPos2f(-0.3, 0.9)
-        for char in "COMP.":
-            glutBitmapCharacter(FONTE, ord(char))
-            
-        glRasterPos2f(-0.3, 0.8)
-        for char in "BARROS":
-            glutBitmapCharacter(FONTE, ord(char))
-            
-        glRasterPos2f(-0.3, 0.7)
-        for char in "UNILAB":
-            glutBitmapCharacter(FONTE, ord(char))
 
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
